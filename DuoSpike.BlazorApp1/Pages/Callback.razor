@@ -1,0 +1,42 @@
+﻿@page "/duo_callback"
+@using DuoSpike.BlazorApp1.Data;
+@using DuoUniversal;
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Options;
+@inject Client _client
+@inject IServiceScopeFactory _scopeFactory
+@inject NavigationManager _navigationManager
+
+<h3>Callback</h3>
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "state")]
+    public string? State { get; set; }
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "code")]
+    public string? Code { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        SessionState sessionState;
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            sessionState = scope.ServiceProvider.GetRequiredService<IOptions<SessionState>>().Value;
+        }
+
+        if (!string.Equals(sessionState.State, State))
+        {
+            throw new DuoException("Session state did not match the expected state");
+        }
+
+        var token = await _client.ExchangeAuthorizationCodeFor2faResult(duoCode: Code, username: sessionState.Username);
+
+        if (string.Equals(token.AuthResult.Status, "allow", StringComparison.OrdinalIgnoreCase))
+        {
+            sessionState.Groups = token.AuthContext.User.Groups.FirstOrDefault();
+        }
+
+        _navigationManager.NavigateTo("/");
+    }
+}

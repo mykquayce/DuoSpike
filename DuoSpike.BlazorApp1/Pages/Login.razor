@@ -1,0 +1,40 @@
+﻿@page "/login"
+@using DuoSpike.BlazorApp1.Data;
+@using Microsoft.AspNetCore.Mvc;
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Options;
+@inject DuoUniversal.Client _client
+@inject NavigationManager _navigationManager
+
+@inject IServiceScopeFactory _scopeFactory
+<h3>Login</h3>
+
+<EditForm Model="_sessionState" OnValidSubmit="DoSubmit">
+    <DataAnnotationsValidator />
+    <InputText @bind-Value="@_sessionState!.Username" />
+    <ValidationMessage For="@(()=>_sessionState.Username)"/>
+    <button type="submit">Submit</button>
+</EditForm>
+
+@code {
+    private SessionState? _sessionState;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        _sessionState = scope.ServiceProvider.GetRequiredService<IOptions<SessionState>>().Value;
+    }
+
+    private async Task DoSubmit()
+    {
+        var ok = await _client.DoHealthCheck();
+
+        if (!ok) throw new Exception();
+
+        var expiration = DateTimeOffset.UtcNow.AddHours(1);
+
+        var promptUri = _client.GenerateAuthUri(username: _sessionState!.Username, state: _sessionState.State);
+
+        _navigationManager.NavigateTo(promptUri);
+    }
+}

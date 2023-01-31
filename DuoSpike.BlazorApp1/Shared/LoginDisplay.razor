@@ -1,0 +1,29 @@
+﻿@using DuoSpike.BlazorApp1.Data;
+@using Microsoft.Extensions.Options;
+@inject IServiceScopeFactory _scopeFactory
+
+@if (!string.IsNullOrWhiteSpace(_groups))
+{
+    <div>Hello, @_username</div>
+    <a href="logout">Log out</a>
+}
+else
+{
+    <a href="login">Log in</a>    
+}
+
+@code {
+    private string? _groups;
+    private string? _username;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SessionState? sessionState;
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            sessionState = scope.ServiceProvider.GetService<IOptions<SessionState>>()?.Value;
+        }
+        _groups = sessionState?.Groups;
+        _username = sessionState?.Username;
+    }
+}
